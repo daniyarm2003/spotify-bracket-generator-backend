@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import qs from 'qs';
 import axios, { Axios } from 'axios';
 import SpotifyAuthController from './spotifyAuthController';
+import SpotifyApiService from '../spotifyApiService';
+import UserService from '../../users/userService';
 
 export interface SpotifyTokenResponse {
     access_token: string;
@@ -19,7 +21,10 @@ export default class SpotifyAuthService {
 
     private readonly authClient: Axios;
 
-    public constructor(clientId: string, clientSecret: string, backendBaseUrl: string) {
+    private readonly apiService: SpotifyApiService;
+    private readonly userService: UserService;
+
+    public constructor(apiService: SpotifyApiService, userService: UserService, clientId: string, clientSecret: string, backendBaseUrl: string) {
         this.clientId = clientId;
         this.backendBaseUrl = backendBaseUrl;
         this.redirectUri = this.backendBaseUrl + SpotifyAuthController.AUTH_CALLBACK_ROUTE_NAME;
@@ -34,6 +39,9 @@ export default class SpotifyAuthService {
                 'Accept': 'application/json'
             }
         });
+
+        this.apiService = apiService;
+        this.userService = userService;
     }
 
     public generateOAuthState() {
@@ -58,5 +66,21 @@ export default class SpotifyAuthService {
         }));
 
         return tokenRes.data as SpotifyTokenResponse;
+    }
+
+    public async onUserSignIn(bearerToken: string) {
+        const spotifyProfile = await this.apiService.getCurrentUserProfile(bearerToken);
+
+        let user = await this.userService.getUserBySpotifyProfile(spotifyProfile);
+        let firstSignIn = false;
+
+        if(!user) {
+            firstSignIn = true;
+            user = await this.userService.addUserWithSpotifyProfile(spotifyProfile);
+        }
+
+        if(firstSignIn) {
+            console.log(`User with email ${user.email} has signed in for the first time!`);
+        }
     }
 }

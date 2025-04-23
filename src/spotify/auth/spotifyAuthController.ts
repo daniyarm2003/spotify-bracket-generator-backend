@@ -78,6 +78,8 @@ export default class SpotifyAuthController {
         try {
             const { access_token, expires_in } = await this.authService.getSpotifyBearerToken(code);
 
+            await this.authService.onUserSignIn(access_token);
+
             res.cookie(SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME, access_token, {
                 expires: new Date(Date.now() + 1000 * (expires_in - SpotifyAuthController.BEARER_COOKIE_PREMATURE_EXPIRY_SECONDS)),
                 httpOnly: true
@@ -91,26 +93,7 @@ export default class SpotifyAuthController {
     }
 
     private async getCurrentUser(req: Request, res: Response) {
-        try {
-            const bearerToken = req.cookies[SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME];
-            const userData = await this.apiService.getCurrentUserProfile(bearerToken);
-
-            res.json(userData);
-        }
-        catch(err) {
-            if(err instanceof AxiosError && err.status === 401) {
-                res.status(err.status).json({
-                    message: 'Unauthorized from Spotify API'
-                });
-            }
-            else {
-                console.error(err);
-
-                res.status(500).json({
-                    message: 'Unexpected error'
-                });
-            }
-        }
+        res.json(req.user);
     }
 
     private async handleLogoutRoute(req: Request, res: Response) {
