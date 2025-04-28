@@ -9,6 +9,7 @@ import SpotifyApiService from './spotify/spotifyApiService';
 import SpotifyAuthMiddleware from './spotify/auth/spotifyAuthMiddleware';
 import createDatabaseClient from './utils/db';
 import UserService from './users/userService';
+import SpotifyAuthStateManager from './spotify/auth/spotifyAuthStateManager';
 
 async function main() {
     const app = express();
@@ -20,16 +21,16 @@ async function main() {
 
     const spotifyApiService = new SpotifyApiService();
     const spotifyAuthService = new SpotifyAuthService(
-        spotifyApiService,
         userService,
         getEnvValueOrThrow('SPOTIFY_APP_CLIENT_ID'),
         getEnvValueOrThrow('SPOTIFY_APP_CLIENT_SECRET'),
         getEnvValueOrThrow('BACKEND_BASE_URL')
     );
 
-    const spotifyAuthMiddleware = new SpotifyAuthMiddleware(spotifyApiService, userService);
+    const spotifyAuthStateManager = new SpotifyAuthStateManager();
+    const spotifyAuthMiddleware = new SpotifyAuthMiddleware(userService, spotifyAuthStateManager);
 
-    const spotifyAuthController = new SpotifyAuthController(spotifyAuthService, spotifyApiService, spotifyAuthMiddleware);
+    const spotifyAuthController = new SpotifyAuthController(spotifyAuthService, spotifyApiService, spotifyAuthStateManager, spotifyAuthMiddleware);
     spotifyAuthController.registerRoutes(app);
 
     const portNumber = getIntegerEnvValueOrThrow('SERVER_PORT', 1, 65535);

@@ -8,10 +8,10 @@ export default class UserService {
         this.prismaClient = prismaClient;
     }
 
-    public async getUserBySpotifyProfile(profile: SpotifyUserProfileFragment) {
+    public async getUserBySpotifyId(id: string) {
         return await this.prismaClient.user.findUnique({
             where: {
-                spotifyId: profile.id
+                spotifyId: id
             }
         });
     }

@@ -1,22 +1,18 @@
 import { NextFunction, Request, Response } from 'express';
-import SpotifyAuthController from './spotifyAuthController';
-import SpotifyApiService from '../spotifyApiService';
-import { AxiosError } from 'axios';
 import UserService from '../../users/userService';
+import SpotifyAuthStateManager, { SpotifyAuthError } from './spotifyAuthStateManager';
 
 export default class SpotifyAuthMiddleware {
-    private readonly apiService: SpotifyApiService;
     private readonly userService: UserService;
+    private readonly authStateManager: SpotifyAuthStateManager;
 
-    public constructor(apiService: SpotifyApiService, userService: UserService) {
-        this.apiService = apiService;
+    public constructor(userService: UserService, authStateManager: SpotifyAuthStateManager) {
         this.userService = userService;
+        this.authStateManager = authStateManager;
     }
 
     public async runMiddleware(req: Request, res: Response, next: NextFunction) {
-        const bearerToken = req.cookies[SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME];
-
-        if(!bearerToken) {
+        if(!this.authStateManager.hasAuthJWTCookie(req)) {
             res.status(401).json({
                 message: 'Unauthorized'
             });
@@ -25,12 +21,12 @@ export default class SpotifyAuthMiddleware {
         }
 
         try {
-            const spotifyUserData = await this.apiService.getCurrentUserProfile(bearerToken);
-            const user = await this.userService.getUserBySpotifyProfile(spotifyUserData);
+            const jwtPayload = this.authStateManager.getAuthJWTCookie(req);
+            const user = await this.userService.getUserBySpotifyId(jwtPayload.id);
 
             if(!user) {
-                res.clearCookie(SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME).status(401).json({
-                    message: 'Unauthorized due to missing entry in database'
+                res.status(401).json({
+                    message: `User with Spotify ID ${jwtPayload.id} was not found in the database`
                 });
 
                 return;
@@ -40,9 +36,9 @@ export default class SpotifyAuthMiddleware {
             next();
         }
         catch(err) {
-            if(err instanceof AxiosError && err.status === 401) {
-                res.clearCookie(SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME).status(401).json({
-                    message: 'Unauthorized from Spotify API'
+            if(err instanceof SpotifyAuthError) {
+                this.authStateManager.revokeAuthJwtCookie(res).status(401).json({
+                    message: err.message
                 });
             }
             else {

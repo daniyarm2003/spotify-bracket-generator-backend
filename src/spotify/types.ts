@@ -36,3 +36,9 @@ export interface SpotifySavedAlbumResponse {
         album: SpotifyAlbumFragment;
     }[];
 }
+
+export interface SpotifyAuthJWTPayload {
+    id: string;
+    email: string;
+    bearerToken: string;
+}

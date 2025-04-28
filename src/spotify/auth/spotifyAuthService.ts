@@ -4,6 +4,7 @@ import axios, { Axios } from 'axios';
 import SpotifyAuthController from './spotifyAuthController';
 import SpotifyApiService from '../spotifyApiService';
 import UserService from '../../users/userService';
+import { SpotifyUserProfileFragment } from '../types';
 
 export interface SpotifyTokenResponse {
     access_token: string;
@@ -20,11 +21,9 @@ export default class SpotifyAuthService {
     private readonly clientId: string;
 
     private readonly authClient: Axios;
-
-    private readonly apiService: SpotifyApiService;
     private readonly userService: UserService;
 
-    public constructor(apiService: SpotifyApiService, userService: UserService, clientId: string, clientSecret: string, backendBaseUrl: string) {
+    public constructor(userService: UserService, clientId: string, clientSecret: string, backendBaseUrl: string) {
         this.clientId = clientId;
         this.backendBaseUrl = backendBaseUrl;
         this.redirectUri = this.backendBaseUrl + SpotifyAuthController.AUTH_CALLBACK_ROUTE_NAME;
@@ -40,7 +39,6 @@ export default class SpotifyAuthService {
             }
         });
 
-        this.apiService = apiService;
         this.userService = userService;
     }
 
@@ -68,10 +66,8 @@ export default class SpotifyAuthService {
         return tokenRes.data as SpotifyTokenResponse;
     }
 
-    public async onUserSignIn(bearerToken: string) {
-        const spotifyProfile = await this.apiService.getCurrentUserProfile(bearerToken);
-
-        let user = await this.userService.getUserBySpotifyProfile(spotifyProfile);
+    public async onUserSignIn(spotifyProfile: SpotifyUserProfileFragment) {
+        let user = await this.userService.getUserBySpotifyId(spotifyProfile.id);
         let firstSignIn = false;
 
         if(!user) {

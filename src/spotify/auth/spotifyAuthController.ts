@@ -4,6 +4,7 @@ import SpotifyApiService from '../spotifyApiService';
 import SpotifyAuthMiddleware from './spotifyAuthMiddleware';
 import SpotifyAuthService from './spotifyAuthService';
 import { Express, Request, Response } from 'express';
+import SpotifyAuthStateManager from './spotifyAuthStateManager';
 
 export default class SpotifyAuthController {
     public static readonly BEARER_TOKEN_COOKIE_NAME = 'authToken';
@@ -14,11 +15,13 @@ export default class SpotifyAuthController {
     private readonly authService: SpotifyAuthService;
     private readonly apiService: SpotifyApiService;
     private readonly authMiddleware: SpotifyAuthMiddleware;
+    private readonly authStateManager: SpotifyAuthStateManager;
 
-    public constructor(authService: SpotifyAuthService, apiService: SpotifyApiService, authMiddleware: SpotifyAuthMiddleware) {
+    public constructor(authService: SpotifyAuthService, apiService: SpotifyApiService, authStateManager: SpotifyAuthStateManager, authMiddleware: SpotifyAuthMiddleware) {
         this.authService = authService;
-        this.apiService = apiService;
         this.authMiddleware = authMiddleware;
+        this.authStateManager = authStateManager;
+        this.apiService = apiService;
     }
 
     public registerRoutes(app: Express) {
@@ -42,14 +45,7 @@ export default class SpotifyAuthController {
         req.session.oauthState = state;
 
         try {
-            await new Promise<void>((resolve, reject) => req.session.save(err => {
-                if(err) {
-                    reject(err);
-                }
-                else {
-                    resolve();
-                }
-            }));
+            await this.authStateManager.saveOAuthLoginState(req, state);
 
             const redirectTo = this.authService.getSpotifyRedirectURL(state, scopes);
             res.redirect(redirectTo);
@@ -76,15 +72,13 @@ export default class SpotifyAuthController {
         }
 
         try {
-            const { access_token, expires_in } = await this.authService.getSpotifyBearerToken(code);
+            const tokenResponse = await this.authService.getSpotifyBearerToken(code);
+            const userProfile = await this.apiService.getCurrentUserProfile(tokenResponse.access_token);
 
-            await this.authService.onUserSignIn(access_token);
+            await this.authStateManager.setAuthJWTCookie(res, tokenResponse, userProfile);
+            await this.authService.onUserSignIn(userProfile);
 
-            res.cookie(SpotifyAuthController.BEARER_TOKEN_COOKIE_NAME, access_token, {
-                expires: new Date(Date.now() + 1000 * (expires_in - SpotifyAuthController.BEARER_COOKIE_PREMATURE_EXPIRY_SECONDS)),
-                httpOnly: true
-            })
-            .redirect(`${frontendBaseUrl}/tournaments`);
+            res.redirect(`${frontendBaseUrl}/tournaments`);
         }
         catch(err) {
             console.error(err);
