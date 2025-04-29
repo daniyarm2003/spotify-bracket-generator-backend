@@ -21,7 +21,21 @@ model User {
   email String @unique @db.VarChar(255)
   role UserRole @default(USER)
 
+  savedAlbums SpotifyAlbum[] @relation("UserSavedAlbums")
+
   @@map("users")
+}
+
+model SpotifyAlbum {
+  id String @id @db.Uuid @default(uuid())
+  spotifyId String @unique @db.VarChar(128)
+  name String @db.VarChar(255)
+  artistName String @db.VarChar(255)
+  imageUrl String? @db.VarChar(255)
+
+  savingUsers User[] @relation("UserSavedAlbums")
+
+  @@map("spotify_albums")
 }
 
 enum UserRole {

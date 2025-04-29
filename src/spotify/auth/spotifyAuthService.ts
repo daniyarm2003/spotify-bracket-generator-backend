@@ -5,6 +5,7 @@ import SpotifyAuthController from './spotifyAuthController';
 import SpotifyApiService from '../spotifyApiService';
 import UserService from '../../users/userService';
 import { SpotifyUserProfileFragment } from '../types';
+import SpotifyAlbumService from '../../albums/spotifyAlbumService';
 
 export interface SpotifyTokenResponse {
     access_token: string;
@@ -15,15 +16,20 @@ export default class SpotifyAuthService {
     private static readonly SPOTIFY_ACCOUNTS_BASE_URL = 'https://accounts.spotify.com';
     private static readonly OAUTH_STATE_BYTES = 16;
 
+    private static readonly ALBUM_FETCH_MAX_LIMIT = 100;
+    private static readonly ALBUM_LOGIN_FETCH_MAX_LIMIT = 20;
+
     private readonly backendBaseUrl: string;
     private readonly redirectUri: string;
 
     private readonly clientId: string;
 
     private readonly authClient: Axios;
-    private readonly userService: UserService;
 
-    public constructor(userService: UserService, clientId: string, clientSecret: string, backendBaseUrl: string) {
+    private readonly userService: UserService;
+    private readonly albumService: SpotifyAlbumService;
+
+    public constructor(userService: UserService, albumService: SpotifyAlbumService, clientId: string, clientSecret: string, backendBaseUrl: string) {
         this.clientId = clientId;
         this.backendBaseUrl = backendBaseUrl;
         this.redirectUri = this.backendBaseUrl + SpotifyAuthController.AUTH_CALLBACK_ROUTE_NAME;
@@ -40,6 +46,7 @@ export default class SpotifyAuthService {
         });
 
         this.userService = userService;
+        this.albumService = albumService;
     }
 
     public generateOAuthState() {
@@ -66,17 +73,17 @@ export default class SpotifyAuthService {
         return tokenRes.data as SpotifyTokenResponse;
     }
 
-    public async onUserSignIn(spotifyProfile: SpotifyUserProfileFragment) {
+    public async onUserSignIn(bearerToken: string, spotifyProfile: SpotifyUserProfileFragment) {
         let user = await this.userService.getUserBySpotifyId(spotifyProfile.id);
-        let firstSignIn = false;
 
         if(!user) {
-            firstSignIn = true;
             user = await this.userService.addUserWithSpotifyProfile(spotifyProfile);
-        }
-
-        if(firstSignIn) {
             console.log(`User with email ${user.email} has signed in for the first time!`);
+
+            await this.albumService.updateUserSavedAlbums(user, bearerToken, SpotifyAuthService.ALBUM_FETCH_MAX_LIMIT);
+        }
+        else {
+            await this.albumService.updateUserSavedAlbums(user, bearerToken, SpotifyAuthService.ALBUM_LOGIN_FETCH_MAX_LIMIT);
         }
     }
 }

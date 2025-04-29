@@ -10,8 +10,6 @@ export default class SpotifyAuthController {
     public static readonly BEARER_TOKEN_COOKIE_NAME = 'authToken';
     public static readonly AUTH_CALLBACK_ROUTE_NAME = '/api/auth/callback';
 
-    private static readonly BEARER_COOKIE_PREMATURE_EXPIRY_SECONDS = 10;
-
     private readonly authService: SpotifyAuthService;
     private readonly apiService: SpotifyApiService;
     private readonly authMiddleware: SpotifyAuthMiddleware;
@@ -73,10 +71,11 @@ export default class SpotifyAuthController {
 
         try {
             const tokenResponse = await this.authService.getSpotifyBearerToken(code);
+
             const userProfile = await this.apiService.getCurrentUserProfile(tokenResponse.access_token);
 
             await this.authStateManager.setAuthJWTCookie(res, tokenResponse, userProfile);
-            await this.authService.onUserSignIn(userProfile);
+            await this.authService.onUserSignIn(tokenResponse.access_token, userProfile);
 
             res.redirect(`${frontendBaseUrl}/tournaments`);
         }

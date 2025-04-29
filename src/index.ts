@@ -10,18 +10,21 @@ import SpotifyAuthMiddleware from './spotify/auth/spotifyAuthMiddleware';
 import createDatabaseClient from './utils/db';
 import UserService from './users/userService';
 import SpotifyAuthStateManager from './spotify/auth/spotifyAuthStateManager';
+import SpotifyAlbumService from './albums/spotifyAlbumService';
 
 async function main() {
     const app = express();
     setupMiddleware(app);
 
     const prismaClient = createDatabaseClient();
+    const spotifyApiService = new SpotifyApiService();
 
     const userService = new UserService(prismaClient);
+    const spotifyAlbumService = new SpotifyAlbumService(prismaClient, spotifyApiService);
 
-    const spotifyApiService = new SpotifyApiService();
     const spotifyAuthService = new SpotifyAuthService(
         userService,
+        spotifyAlbumService,
         getEnvValueOrThrow('SPOTIFY_APP_CLIENT_ID'),
         getEnvValueOrThrow('SPOTIFY_APP_CLIENT_SECRET'),
         getEnvValueOrThrow('BACKEND_BASE_URL')
