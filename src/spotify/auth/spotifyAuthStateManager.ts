@@ -46,7 +46,8 @@ export default class SpotifyAuthStateManager {
 
         res.cookie(SpotifyAuthStateManager.BEARER_TOKEN_COOKIE_NAME, token, {
             expires: new Date(Date.now() + 1000 * (expires_in - SpotifyAuthStateManager.BEARER_COOKIE_PREMATURE_EXPIRY_SECONDS)),
-            httpOnly: true
+            httpOnly: true,
+            sameSite: 'lax',
         });
 
         return res;

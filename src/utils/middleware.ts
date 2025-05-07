@@ -8,11 +8,16 @@ import { getEnvValueOrThrow } from './env';
 import cookieParser from 'cookie-parser';
 
 export default function setupMiddleware(app: Express) {
+    const frontendBaseUrl = getEnvValueOrThrow('FRONTEND_BASE_URL');
+
     app.use(express.urlencoded({ extended: true }));
     app.use(express.json());
 
     app.use(cookieParser());
-    app.use(cors());
+    app.use(cors({
+        origin: frontendBaseUrl,
+        credentials: true
+    }));
 
     const sessionSecret = getEnvValueOrThrow('SESSION_HMAC_SECRET');
 
