@@ -35,6 +35,7 @@ export default class SpotifyAuthStateManager {
     public async setAuthJWTCookie(res: Response, { access_token, expires_in }: SpotifyTokenResponse, { id, email }: SpotifyUserProfileFragment) {
         const secret = getEnvValueOrThrow('SESSION_HMAC_SECRET');
 
+        // Environment determines cookie security settings
         const nodeEnv = getEnvValueOrThrow('NODE_ENV');
         const isNotDevEnv = nodeEnv === 'production' || nodeEnv === 'staging';
 
