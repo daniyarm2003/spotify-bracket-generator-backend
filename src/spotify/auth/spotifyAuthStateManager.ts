@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import SpotifyApiService from '../spotifyApiService';
 import { SpotifyTokenResponse } from './spotifyAuthService';
 import { getEnvValueOrThrow } from '../../utils/env';
 import { SpotifyAuthJWTPayload, SpotifyUserProfileFragment } from '../types';
@@ -36,6 +35,9 @@ export default class SpotifyAuthStateManager {
     public async setAuthJWTCookie(res: Response, { access_token, expires_in }: SpotifyTokenResponse, { id, email }: SpotifyUserProfileFragment) {
         const secret = getEnvValueOrThrow('SESSION_HMAC_SECRET');
 
+        const nodeEnv = getEnvValueOrThrow('NODE_ENV');
+        const isNotDevEnv = nodeEnv === 'production' || nodeEnv === 'staging';
+
         const payload: SpotifyAuthJWTPayload = {
             id,
             email,
@@ -47,7 +49,8 @@ export default class SpotifyAuthStateManager {
         res.cookie(SpotifyAuthStateManager.BEARER_TOKEN_COOKIE_NAME, token, {
             expires: new Date(Date.now() + 1000 * (expires_in - SpotifyAuthStateManager.BEARER_COOKIE_PREMATURE_EXPIRY_SECONDS)),
             httpOnly: true,
-            sameSite: 'lax',
+            sameSite: isNotDevEnv ? 'none' : 'lax',
+            secure: isNotDevEnv,
         });
 
         return res;
