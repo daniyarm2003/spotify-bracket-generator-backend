@@ -13,6 +13,7 @@ export default class TournamentController {
 
     public registerRoutes(app: Express) {
         app.get('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentsByLoggedInUser.bind(this));
+        app.post('/api/tournaments/:tournamentId/bracket', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentBracket.bind(this));
     }
 
     private async getTournamentsByLoggedInUser(req: Request, res: Response) {
@@ -29,15 +30,10 @@ export default class TournamentController {
     }
 
     private async getTournamentBracket(req: Request, res: Response) {
-        const tournamentData = req.body;
+        const { tournamentId } = req.params;
         const user = req.user!;
 
-        if(!tournamentData || !tournamentData.id) {
-            res.status(400).json({ message: 'Tournament ID is required' });
-            return;
-        }
-
-        const tournament = await this.tournamentService.getTournamentById(tournamentData.id);
+        const tournament = await this.tournamentService.getTournamentById(tournamentId);
 
         if(!tournament) {
             res.status(404).json({ message: 'Tournament not found' });
