@@ -40,4 +40,19 @@ export default class SpotifyAlbumService {
 
         return updatedSavedAlbums;
     }
+
+    public async getUserSavedAlbums(user: User) {
+        const savedAlbums = await this.prismaClient.spotifyAlbum.findMany({
+            where: {
+                savingUsers: {
+                    some: {
+                        id: user.id
+                    }
+                }
+            }
+        });
+
+        return savedAlbums;
+    }
+
 }

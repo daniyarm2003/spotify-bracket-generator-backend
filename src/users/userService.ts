@@ -8,6 +8,14 @@ export default class UserService {
         this.prismaClient = prismaClient;
     }
 
+    public async getUserById(id: string) {
+        return await this.prismaClient.user.findUnique({
+            where: {
+                id
+            }
+        });
+    }
+
     public async getUserBySpotifyId(id: string) {
         return await this.prismaClient.user.findUnique({
             where: {

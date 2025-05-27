@@ -11,6 +11,7 @@ import createDatabaseClient from './utils/db';
 import UserService from './users/userService';
 import SpotifyAuthStateManager from './spotify/auth/spotifyAuthStateManager';
 import SpotifyAlbumService from './albums/spotifyAlbumService';
+import TournamentService from './tournaments/tournamentService';
 
 async function main() {
     const app = express();
@@ -21,6 +22,7 @@ async function main() {
 
     const userService = new UserService(prismaClient);
     const spotifyAlbumService = new SpotifyAlbumService(prismaClient, spotifyApiService);
+    const tournamentService = new TournamentService(prismaClient, spotifyAlbumService);
 
     const spotifyAuthService = new SpotifyAuthService(
         userService,

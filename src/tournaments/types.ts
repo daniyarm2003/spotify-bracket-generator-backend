@@ -7,4 +7,5 @@ export type TournamentRoundTreeNode = TournamentRound & {
 export interface TournamentCreationDTO {
     user: User;
     name: string;
+    albumCount: number;
 }
