@@ -13,7 +13,7 @@ export default class TournamentController {
 
     public registerRoutes(app: Express) {
         app.get('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentsByLoggedInUser.bind(this));
-        app.post('/api/tournaments/:tournamentId/bracket', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentBracket.bind(this));
+        app.post('/api/tournaments/:tournamentId/bracket', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentById.bind(this));
     }
 
     private async getTournamentsByLoggedInUser(req: Request, res: Response) {
@@ -29,7 +29,7 @@ export default class TournamentController {
         }
     }
 
-    private async getTournamentBracket(req: Request, res: Response) {
+    private async getTournamentById(req: Request, res: Response) {
         const { tournamentId } = req.params;
         const user = req.user!;
 
@@ -46,11 +46,18 @@ export default class TournamentController {
 
         try {
             const bracket = await this.tournamentService.getTournamentBracket(tournament);
-            res.status(200).json(bracket);
+
+            // A neat trick I just learned to filter out the user and userId properties from the tournament object
+            const { user, userId, ...filteredTournament } = tournament;
+
+            res.status(200).json({
+                ...filteredTournament,
+                bracket
+            });
         }
         catch(err) {
             console.error(err);
-            res.status(500).json({ message: 'Unexpected error while fetching tournament bracket' });
+            res.status(500).json({ message: 'Unexpected error while fetching tournament' });
         }
     }
 }
