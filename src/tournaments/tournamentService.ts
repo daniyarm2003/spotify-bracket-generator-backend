@@ -132,7 +132,7 @@ export default class TournamentService {
         }
     }
 
-    public async createTournament({ user, name, albumCount }: TournamentCreationDTO) {
+    public async createTournament(user: User, { name, albumCount }: TournamentCreationDTO) {
         const generationStrategy = new RandomBracketGenerationStrategy();
         const userAlbums = await this.spotifyAlbumService.getUserSavedAlbums(user);
 
