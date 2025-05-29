@@ -55,4 +55,18 @@ export default class SpotifyAlbumService {
         return savedAlbums;
     }
 
+    public async getUserSavedAlbumCount(user: User) {
+        const count = await this.prismaClient.spotifyAlbum.count({
+            where: {
+                savingUsers: {
+                    some: {
+                        id: user.id
+                    }
+                }
+            }
+        });
+
+        return count;
+    }
+
 }

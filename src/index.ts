@@ -13,6 +13,7 @@ import SpotifyAuthStateManager from './spotify/auth/spotifyAuthStateManager';
 import SpotifyAlbumService from './albums/spotifyAlbumService';
 import TournamentService from './tournaments/tournamentService';
 import TournamentController from './tournaments/tournamentController';
+import SpotifyAlbumController from './albums/spotifyAlbumController';
 
 async function main() {
     const app = express();
@@ -39,8 +40,11 @@ async function main() {
     const spotifyAuthController = new SpotifyAuthController(spotifyAuthService, spotifyApiService, spotifyAuthStateManager, spotifyAuthMiddleware);
     spotifyAuthController.registerRoutes(app);
 
-    const tournamentController = new TournamentController(tournamentService, spotifyAuthMiddleware);
+    const tournamentController = new TournamentController(tournamentService, spotifyAuthMiddleware, spotifyAlbumService);
     tournamentController.registerRoutes(app);
+
+    const spotifyAlbumController = new SpotifyAlbumController(spotifyAlbumService, spotifyAuthMiddleware);
+    spotifyAlbumController.registerRoutes(app);
 
     const portNumber = getIntegerEnvValueOrThrow('SERVER_PORT', 1, 65535);
     app.listen(portNumber, () => console.log(`Server is listening on port ${portNumber}`));
