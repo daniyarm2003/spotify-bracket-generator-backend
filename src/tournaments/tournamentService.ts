@@ -1,7 +1,7 @@
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
 import { Prisma, PrismaClient, Tournament, TournamentRound, User } from '../generated/prisma';
 import BracketGenerationStrategy, { RandomBracketGenerationStrategy } from './bracketGenerationStrategy';
-import { TournamentCreationDTO, TournamentRoundTreeNode } from './types';
+import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundTreeNode } from './types';
 
 export default class TournamentService {
     private readonly prismaClient: PrismaClient;
@@ -29,6 +29,9 @@ export default class TournamentService {
         const tournaments = await this.prismaClient.tournament.findMany({
             where: {
                 user
+            },
+            orderBy: {
+                createdAt: 'asc'
             }
         });
 
@@ -172,6 +175,15 @@ export default class TournamentService {
             where: {
                 id: tournament.id
             },
+        });
+    }
+
+    public async editTournamentById(tournamentId: string, editDTO: TournamentEditDTO) {
+        return this.prismaClient.tournament.update({
+            where: {
+                id: tournamentId
+            },
+            data: editDTO
         });
     }
 }

@@ -8,3 +8,7 @@ export interface TournamentCreationDTO {
     name: string;
     albumCount: number;
 }
+
+export interface TournamentEditDTO {
+    name?: string;
+}
