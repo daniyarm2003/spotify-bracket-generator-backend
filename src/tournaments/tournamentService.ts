@@ -1,7 +1,7 @@
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
 import { Prisma, PrismaClient, Tournament, TournamentRound, User } from '../generated/prisma';
 import BracketGenerationStrategy, { RandomBracketGenerationStrategy } from './bracketGenerationStrategy';
-import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundTreeNode } from './types';
+import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundTreeNode, TournamentRoundTreeNodeComplex } from './types';
 
 export default class TournamentService {
     private readonly prismaClient: PrismaClient;
@@ -38,15 +38,18 @@ export default class TournamentService {
         return tournaments;
     }
 
-    private async getTournamentSubTree(tournamentRound: TournamentRoundTreeNode): Promise<TournamentRoundTreeNode> {
+    private async getTournamentSubTree(tournamentRound: TournamentRoundTreeNodeComplex): Promise<TournamentRoundTreeNodeComplex> {
         const subRounds = await this.prismaClient.tournamentRound.findMany({
             where: {
                 nextRoundId: tournamentRound.id
+            },
+            include: {
+                album: true
             }
-        }) as TournamentRoundTreeNode[];
+        }) as unknown as TournamentRoundTreeNodeComplex[];
 
         // This approach avoids overflowing the connection pool
-        let subTrees: TournamentRoundTreeNode[] = [];
+        let subTrees: TournamentRoundTreeNodeComplex[] = [];
         for (const subRound of subRounds) {
             subTrees.push(await this.getTournamentSubTree(subRound));
         }
@@ -62,8 +65,11 @@ export default class TournamentService {
             where: {
                 tournament,
                 nextRound: null
+            },
+            include: {
+                album: true
             }
-        }) as TournamentRoundTreeNode;
+        }) as unknown as TournamentRoundTreeNodeComplex;
 
         if(!finalRound) {
             return null;

@@ -17,7 +17,7 @@ export default class TournamentController {
 
     public registerRoutes(app: Express) {
         app.get('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentsByLoggedInUser.bind(this));
-        app.get('/api/tournaments/:tournamentId/bracket', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentById.bind(this));
+        app.get('/api/tournaments/:tournamentId', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentById.bind(this));
         app.post('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.createTournamentForLoggedInUser.bind(this));
         app.patch('/api/tournaments/:tournamentId', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.editTournamentOfLoggedInUser.bind(this));
     }

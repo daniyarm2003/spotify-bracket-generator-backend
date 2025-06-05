@@ -10,6 +10,14 @@ export default class SpotifyAlbumService {
         this.spotifyApiService = spotifyApiService;
     }
 
+    public async getAlbumById(id: string) {
+        return this.prismaClient.spotifyAlbum.findUnique({
+            where: {
+                id
+            }
+        });
+    }
+
     public async updateUserSavedAlbums(user: User, bearerToken: string, albumFetchLimit?: number) {
         let savedAlbums = await this.spotifyApiService.getAllCurrentUserSavedAlbums(bearerToken, albumFetchLimit);
         savedAlbums = savedAlbums.filter(album => album.album_type === 'album');
