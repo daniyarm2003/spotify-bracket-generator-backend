@@ -1,7 +1,7 @@
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
 import { Prisma, PrismaClient, Tournament, TournamentRound, User } from '../generated/prisma';
 import BracketGenerationStrategy, { RandomBracketGenerationStrategy } from './bracketGenerationStrategy';
-import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundTreeNode, TournamentRoundTreeNodeComplex } from './types';
+import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO, TournamentRoundTreeNode, TournamentRoundTreeNodeComplex } from './types';
 
 export default class TournamentService {
     private readonly prismaClient: PrismaClient;
@@ -25,6 +25,24 @@ export default class TournamentService {
         return tournament;
     }
 
+    public async getTournamentRoundById(id: number) {
+        const tournamentRound = await this.prismaClient.tournamentRound.findUnique({
+            where: {
+                id
+            },
+            include: {
+                tournament: {
+                    include: {
+                        user: true
+                    }
+                },
+                previousRounds: true
+            }
+        });
+
+        return tournamentRound;
+    }
+
     public async getTournamentsByUser(user: User) {
         const tournaments = await this.prismaClient.tournament.findMany({
             where: {
@@ -45,6 +63,9 @@ export default class TournamentService {
             },
             include: {
                 album: true
+            },
+            orderBy: {
+                id: 'asc'
             }
         }) as unknown as TournamentRoundTreeNodeComplex[];
 
@@ -191,5 +212,25 @@ export default class TournamentService {
             },
             data: editDTO
         });
+    }
+
+    public async setTournamentRoundWinner(nextRound: TournamentRound, winningRound?: TournamentRound) {
+        if(!winningRound) {
+            return null;
+        }
+
+        const updatedRound = await this.prismaClient.tournamentRound.update({
+            where: {
+                id: nextRound.id
+            },
+            data: {
+                albumId: winningRound.albumId
+            },
+            include: {
+                album: true
+            }
+        }) as unknown as TournamentRoundTreeNodeComplex;
+
+        return this.getTournamentSubTree(updatedRound);
     }
 }

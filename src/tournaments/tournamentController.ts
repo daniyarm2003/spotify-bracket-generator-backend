@@ -1,8 +1,11 @@
 import SpotifyAuthMiddleware from '../spotify/auth/spotifyAuthMiddleware';
 import TournamentService from './tournamentService';
 import { Express, Request, Response } from 'express';
-import { isTournamentCreationDTO, isTournamentEditDTO } from './typeValidation';
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
+import { validate } from 'class-validator';
+import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO } from './types';
+import { plainToInstance } from 'class-transformer';
+import { TournamentRound } from '../generated/prisma';
 
 export default class TournamentController {
     private readonly tournamentService: TournamentService;
@@ -16,10 +19,30 @@ export default class TournamentController {
     }
 
     public registerRoutes(app: Express) {
-        app.get('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentsByLoggedInUser.bind(this));
-        app.get('/api/tournaments/:tournamentId', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.getTournamentById.bind(this));
-        app.post('/api/tournaments', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.createTournamentForLoggedInUser.bind(this));
-        app.patch('/api/tournaments/:tournamentId', this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), this.editTournamentOfLoggedInUser.bind(this));
+        app.get('/api/tournaments', 
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), 
+            this.getTournamentsByLoggedInUser.bind(this)
+        );
+
+        app.get('/api/tournaments/:tournamentId', 
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), 
+            this.getTournamentById.bind(this)
+        );
+
+        app.post('/api/tournaments', 
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), 
+            this.createTournamentForLoggedInUser.bind(this)
+        );
+
+        app.patch('/api/tournaments/:tournamentId', 
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), 
+            this.editTournamentOfLoggedInUser.bind(this)
+        );
+
+        app.put('/api/tournaments/rounds/:tournamentRoundId',
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware),
+            this.updateTournamentRound.bind(this)
+        );
     }
 
     private async getTournamentsByLoggedInUser(req: Request, res: Response) {
@@ -67,31 +90,16 @@ export default class TournamentController {
         }
     }
 
-    private validateTournamentName(name: string) {
-        const minNameLength = 1;
-        const maxNameLength = 32;
-
-        if(name.length < minNameLength || name.length > maxNameLength) {
-            throw new Error(`Tournament name must be between ${minNameLength} and ${maxNameLength} characters long`);
-        }
-
-        return true;
-    }
-
     private async createTournamentForLoggedInUser(req: Request, res: Response) {
         const user = req.user!;
-        const tournamentCreationDTO = req.body;
 
-        if(!isTournamentCreationDTO(tournamentCreationDTO)) {
-            res.status(400).json({ message: 'Invalid tournament creation data' });
-            return;
-        }
+        const tournamentCreationDTOBody = req.body;
+        const tournamentCreationDTO = plainToInstance(TournamentCreationDTO, tournamentCreationDTOBody);
 
-        try {
-            this.validateTournamentName(tournamentCreationDTO.name);
-        }
-        catch(err: any) {
-            res.status(400).json({ message: err.message });
+        const validationErrors = await validate(tournamentCreationDTO);
+
+        if(validationErrors.length > 0) {
+            res.status(400).json({ message: 'Invalid tournament creation data', errors: validationErrors });
             return;
         }
 
@@ -115,7 +123,9 @@ export default class TournamentController {
 
     private async editTournamentOfLoggedInUser(req: Request, res: Response) {
         const user = req.user!;
-        const tournamentEditDTO = req.body;
+
+        const tournamentEditDTOBody = req.body;
+        const tournamentEditDTO = plainToInstance(TournamentEditDTO, tournamentEditDTOBody);
 
         const { tournamentId } = req.params;
 
@@ -130,18 +140,13 @@ export default class TournamentController {
             return;
         }
 
-        if(!isTournamentEditDTO(tournamentEditDTO)) {
-            res.status(400).json({ message: 'Invalid tournament edit data' });
-            return;
-        }
+        const validationErrors = await validate(tournamentEditDTO, {
+            skipMissingProperties: true,
+            whitelist: true
+        });
 
-        try {
-            if(tournamentEditDTO.name) {
-                this.validateTournamentName(tournamentEditDTO.name);
-            }
-        }
-        catch(err: any) {
-            res.status(400).json({ message: err.message });
+        if(validationErrors.length > 0) {
+            res.status(400).json({ message: 'Invalid tournament edit data', errors: validationErrors });
             return;
         }
 
@@ -152,6 +157,66 @@ export default class TournamentController {
         catch(err) {
             console.error(err);
             res.status(500).json({ message: 'Unexpected error while editing tournament' });
+        }
+    }
+
+    public async updateTournamentRound(req: Request, res: Response) {
+        const user = req.user!;
+
+        const { tournamentRoundId } = req.params;
+
+        const tournamentRoundEditDTOBody = req.body;
+        const tournamentRoundEditDTO = plainToInstance(TournamentRoundEditDTO, tournamentRoundEditDTOBody);
+
+        const validationErrors = await validate(tournamentRoundEditDTO, {
+            skipMissingProperties: true,
+            whitelist: true
+        });
+
+        if(validationErrors.length > 0) {
+            res.status(400).json({ message: 'Invalid tournament round edit data', errors: validationErrors });
+            return;
+        }
+        
+        const nextRoundId = parseInt(tournamentRoundId, 10);
+
+        if(isNaN(nextRoundId)) {
+            res.status(400).json({ message: 'Invalid tournament round ID' });
+            return;
+        }
+
+        const tournamentRound = await this.tournamentService.getTournamentRoundById(nextRoundId);
+
+        if(!tournamentRound) {
+            res.status(404).json({ message: 'Tournament round not found' });
+            return;
+        }
+        else if(tournamentRound.tournament.user.id !== user.id) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+        
+        let winningRound;
+
+        if(!tournamentRoundEditDTO.winnerId) {
+            winningRound = null;
+        }
+        else {
+            winningRound = tournamentRound.previousRounds.find(round => round.id === tournamentRoundEditDTO.winnerId);
+
+            if(!winningRound) {
+                res.status(404).json({ message: 'Winning round not found in previous rounds' });
+                return;
+            }
+        }
+
+        try {
+            const updatedTournamentRound = await this.tournamentService.setTournamentRoundWinner(tournamentRound, winningRound as TournamentRound | undefined);
+            res.status(200).json(updatedTournamentRound);
+        }
+        catch(err) {
+            console.error(err);
+            res.status(500).json({ message: 'Unexpected error while setting tournament round winner' });
         }
     }
 }
