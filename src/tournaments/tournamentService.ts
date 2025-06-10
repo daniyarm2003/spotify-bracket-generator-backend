@@ -215,22 +215,44 @@ export default class TournamentService {
     }
 
     public async setTournamentRoundWinner(nextRound: TournamentRound, winningRound?: TournamentRound) {
-        if(!winningRound) {
-            return null;
-        }
+        // Perform a transaction to update the tournament round tree
+        const updatedRoundTree = await this.prismaClient.$transaction(async (tx) => {
+            let lastUpdatedRound: TournamentRound | null = null;
+            let roundToUpdate: TournamentRound | null = nextRound;
 
-        const updatedRound = await this.prismaClient.tournamentRound.update({
-            where: {
-                id: nextRound.id
-            },
-            data: {
-                albumId: winningRound.albumId
-            },
-            include: {
-                album: true
+            // Flag to determine whether to update the current round
+            let updateCurrent = true;
+
+            // Traverse and update the rounds until there are no more rounds to update
+            while(roundToUpdate && (roundToUpdate.albumId || updateCurrent)) {
+                updateCurrent = false;
+
+                // Update the current round with the winning album
+                const updatedRound = await tx.tournamentRound.update({
+                    where: {
+                        id: roundToUpdate.id
+                    },
+                    data: {
+                        albumId: winningRound?.albumId ?? null
+                    },
+                    include: {
+                        album: true,
+                        nextRound: true
+                    }
+                });
+
+                // Keep track of the last updated round
+                lastUpdatedRound = updatedRound as unknown as TournamentRound;
+
+                // Move to the next round in the tree
+                roundToUpdate = updatedRound.nextRound as unknown as TournamentRound;
             }
-        }) as unknown as TournamentRoundTreeNodeComplex;
 
-        return this.getTournamentSubTree(updatedRound);
+            // Return the last updated round
+            return lastUpdatedRound;
+        });
+
+        // Retrieve and return the updated tournament round tree
+        return this.getTournamentSubTree(updatedRoundTree as unknown as TournamentRoundTreeNodeComplex);
     }
 }

@@ -195,6 +195,10 @@ export default class TournamentController {
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
+        else if(tournamentRound.previousRounds.length === 0 && !tournamentRoundEditDTO.winnerId) {
+            res.status(400).json({ message: 'Cannot clear a leaf node round' });
+            return;
+        }
         
         let winningRound;
 
