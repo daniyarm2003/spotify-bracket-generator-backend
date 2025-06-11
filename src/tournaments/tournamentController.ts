@@ -6,6 +6,7 @@ import { validate } from 'class-validator';
 import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO } from './types';
 import { plainToInstance } from 'class-transformer';
 import { TournamentRound } from '../generated/prisma';
+import { AlbumLimitError } from './errors';
 
 export default class TournamentController {
     private readonly tournamentService: TournamentService;
@@ -116,6 +117,11 @@ export default class TournamentController {
             res.status(201).json(tournament);
         }
         catch(err) {
+            if(err instanceof AlbumLimitError) {
+                res.status(400).json({ message: err.message, maxLimit: err.getMaxLimit() });
+                return;
+            }
+
             console.error(err);
             res.status(500).json({ message: 'Unexpected error while creating tournament' });
         }

@@ -1,6 +1,8 @@
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
 import { Prisma, PrismaClient, Tournament, TournamentRound, User } from '../generated/prisma';
+import { RandomAlbumSelectionStrategy } from './albumSelectionStrategy';
 import BracketGenerationStrategy, { RandomBracketGenerationStrategy } from './bracketGenerationStrategy';
+import { AlbumLimitError } from './errors';
 import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO, TournamentRoundTreeNode, TournamentRoundTreeNodeComplex } from './types';
 
 export default class TournamentService {
@@ -163,14 +165,20 @@ export default class TournamentService {
     }
 
     public async createTournament(user: User, { name, albumCount }: TournamentCreationDTO) {
+        const albumSelectionStrategy = new RandomAlbumSelectionStrategy();
         const generationStrategy = new RandomBracketGenerationStrategy();
+
         const userAlbums = await this.spotifyAlbumService.getUserSavedAlbums(user);
 
         if (userAlbums.length < albumCount) {
-            throw new Error(`Not enough albums saved by user. Required: ${albumCount}, Available: ${userAlbums.length}`);
+            throw new AlbumLimitError(`Not enough albums saved by user. Required: ${albumCount}, Available: ${userAlbums.length}`, albumCount);
+        }
+        else if(albumCount > albumSelectionStrategy.getMaximumAlbumLimit()) {
+            throw new AlbumLimitError(`Album count exceeds the maximum limit of ${albumSelectionStrategy.getMaximumAlbumLimit()}`, 
+                albumSelectionStrategy.getMaximumAlbumLimit());
         }
 
-        const shuffledAlbums = userAlbums.sort(() => Math.random() - 0.5).slice(0, albumCount);
+        const shuffledAlbums = await albumSelectionStrategy.selectAlbums(userAlbums, albumCount);
 
         const tournament = await this.prismaClient.tournament.create({
             data: {

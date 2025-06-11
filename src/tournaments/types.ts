@@ -23,6 +23,15 @@ export class TournamentCreationDTO {
         message: 'Album count must be a number'
     })
     albumCount: number;
+
+    @IsOptional()
+    @IsString({
+        message: 'AI album selection prompt must be a string'
+    })
+    @Length(1, 256, {
+        message: 'AI album selection prompt must be between 1 and 256 characters long'
+    })
+    aiPrompt?: string;
 }
 
 export class TournamentEditDTO {
