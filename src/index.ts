@@ -14,17 +14,25 @@ import SpotifyAlbumService from './albums/spotifyAlbumService';
 import TournamentService from './tournaments/tournamentService';
 import TournamentController from './tournaments/tournamentController';
 import SpotifyAlbumController from './albums/spotifyAlbumController';
+import { GoogleGenAI } from '@google/genai';
+import GeminiService from './genai/geminiService';
 
 async function main() {
     const app = express();
     setupMiddleware(app);
+
+    const googleGenAi = new GoogleGenAI({
+        apiKey: getEnvValueOrThrow('GEMINI_API_KEY')
+    });
+
+    const genAIService = new GeminiService(googleGenAi, 'gemini-2.0-flash-lite');
 
     const prismaClient = createDatabaseClient();
     const spotifyApiService = new SpotifyApiService();
 
     const userService = new UserService(prismaClient);
     const spotifyAlbumService = new SpotifyAlbumService(prismaClient, spotifyApiService);
-    const tournamentService = new TournamentService(prismaClient, spotifyAlbumService);
+    const tournamentService = new TournamentService(prismaClient, spotifyAlbumService, genAIService);
 
     const spotifyAuthService = new SpotifyAuthService(
         userService,

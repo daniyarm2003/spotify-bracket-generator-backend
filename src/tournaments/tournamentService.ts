@@ -1,6 +1,7 @@
 import SpotifyAlbumService from '../albums/spotifyAlbumService';
+import GenAIService from '../genai/genAIService';
 import { Prisma, PrismaClient, Tournament, TournamentRound, User } from '../generated/prisma';
-import { RandomAlbumSelectionStrategy } from './albumSelectionStrategy';
+import { AIAlbumSelectionStrategy, RandomAlbumSelectionStrategy } from './albumSelectionStrategy';
 import BracketGenerationStrategy, { RandomBracketGenerationStrategy } from './bracketGenerationStrategy';
 import { AlbumLimitError } from './errors';
 import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO, TournamentRoundTreeNode, TournamentRoundTreeNodeComplex } from './types';
@@ -8,10 +9,12 @@ import { TournamentCreationDTO, TournamentEditDTO, TournamentRoundEditDTO, Tourn
 export default class TournamentService {
     private readonly prismaClient: PrismaClient;
     private readonly spotifyAlbumService: SpotifyAlbumService;
+    private readonly genAIService: GenAIService;
 
-    public constructor(prismaClient: PrismaClient, spotifyAlbumService: SpotifyAlbumService) {
+    public constructor(prismaClient: PrismaClient, spotifyAlbumService: SpotifyAlbumService, genAIService: GenAIService) {
         this.prismaClient = prismaClient;
         this.spotifyAlbumService = spotifyAlbumService;
+        this.genAIService = genAIService;
     }
 
     public async getTournamentById(id: string) {
@@ -164,8 +167,8 @@ export default class TournamentService {
         }
     }
 
-    public async createTournament(user: User, { name, albumCount }: TournamentCreationDTO) {
-        const albumSelectionStrategy = new RandomAlbumSelectionStrategy();
+    public async createTournament(user: User, { name, albumCount, aiPrompt }: TournamentCreationDTO) {
+        const albumSelectionStrategy = aiPrompt ? new AIAlbumSelectionStrategy(this.genAIService, aiPrompt) : new RandomAlbumSelectionStrategy();
         const generationStrategy = new RandomBracketGenerationStrategy();
 
         const userAlbums = await this.spotifyAlbumService.getUserSavedAlbums(user);
