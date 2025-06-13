@@ -30,6 +30,11 @@ export default class TournamentController {
             this.getTournamentById.bind(this)
         );
 
+        app.delete('/api/tournaments/:tournamentId',
+            this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware),
+            this.deleteTournamentById.bind(this)
+        );
+
         app.post('/api/tournaments', 
             this.spotifyAuthMiddleware.runMiddleware.bind(this.spotifyAuthMiddleware), 
             this.createTournamentForLoggedInUser.bind(this)
@@ -88,6 +93,31 @@ export default class TournamentController {
         catch(err) {
             console.error(err);
             res.status(500).json({ message: 'Unexpected error while fetching tournament' });
+        }
+    }
+
+    private async deleteTournamentById(req: Request, res: Response) {
+        const { tournamentId } = req.params;
+        const user = req.user!;
+
+        const tournament = await this.tournamentService.getTournamentById(tournamentId);
+
+        if(!tournament) {
+            res.status(404).json({ message: 'Tournament not found' });
+            return;
+        }
+        else if(tournament.user.id !== user.id) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        try {
+            const deletedTournament = await this.tournamentService.deleteTournamentById(tournamentId);
+            res.status(200).json(deletedTournament);
+        }
+        catch(err) {
+            console.error(err);
+            res.status(500).json({ message: 'Unexpected error while deleting tournament' });
         }
     }
 

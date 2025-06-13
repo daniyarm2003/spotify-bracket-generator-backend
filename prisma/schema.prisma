@@ -46,7 +46,7 @@ model Tournament {
   createdAt DateTime @default(now())
   published Boolean  @default(false)
 
-  user   User   @relation("UserTournaments", fields: [userId], references: [id])
+  user   User   @relation("UserTournaments", fields: [userId], references: [id], onDelete: Cascade)
   userId String @db.Uuid
 
   rounds TournamentRound[] @relation("TournamentRounds")
@@ -58,13 +58,13 @@ model TournamentRound {
   id Int @id @default(autoincrement())
 
   previousRounds TournamentRound[] @relation("TournamentRoundTree")
-  nextRound      TournamentRound?  @relation("TournamentRoundTree", fields: [nextRoundId], references: [id])
+  nextRound      TournamentRound?  @relation("TournamentRoundTree", fields: [nextRoundId], references: [id], onDelete: Cascade)
   nextRoundId    Int?
 
   album   SpotifyAlbum? @relation("TournamentRoundAlbum", fields: [albumId], references: [id])
   albumId String?       @db.Uuid
 
-  tournament   Tournament @relation("TournamentRounds", fields: [tournamentId], references: [id])
+  tournament   Tournament @relation("TournamentRounds", fields: [tournamentId], references: [id], onDelete: Cascade)
   tournamentId String     @db.Uuid
 
   @@map("tournament_rounds")

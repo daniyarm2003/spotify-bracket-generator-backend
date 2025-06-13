@@ -225,6 +225,14 @@ export default class TournamentService {
         });
     }
 
+    public async deleteTournamentById(tournamentId: string) {
+        return this.prismaClient.tournament.delete({
+            where: {
+                id: tournamentId
+            }
+        });
+    }
+
     public async setTournamentRoundWinner(nextRound: TournamentRound, winningRound?: TournamentRound) {
         // Perform a transaction to update the tournament round tree
         const updatedRoundTree = await this.prismaClient.$transaction(async (tx) => {
