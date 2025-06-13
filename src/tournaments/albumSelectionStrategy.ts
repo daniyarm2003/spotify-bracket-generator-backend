@@ -104,18 +104,19 @@ export class AIAlbumSelectionStrategy implements AlbumSelectionStrategy {
 
             if(returnedAlbums.length !== curCount) {
                 console.warn(`The AI returned the wrong count (expected: ${curCount}, actual: ${albumIDArray.length})`);
-                prompt = `The array does not have ${curCount} items, please try again. Remember, no explanations or markdown.`;
 
-                const missingAlbums = curCount - albumIDArray.length;
+                const missingAlbums = curCount - returnedAlbums.length;
 
                 if(missingAlbums > 0) {
                     prompt = this.getAlbumSelectionPrompt(filteredUserAlbums, missingAlbums) + '\n\nDo not pick albums you have already selected.';
                     curCount = missingAlbums;
 
                     selectedAlbums = [ ...selectedAlbums, ...returnedAlbums ];
+                    continue;
                 }
-
-                continue;
+                else {
+                    return [ ...selectedAlbums, ...returnedAlbums.slice(0, curCount) ];
+                }
             }
 
             return [ ...selectedAlbums, ...returnedAlbums ];
