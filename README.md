@@ -25,3 +25,4 @@ This backend powers a web app that lets users log in with Spotify, fetch their s
 - `npm run dev`: Start the app in development mode with auto-reload.
 - `npm run build`: Compile TypeScript to the `build` directory.
 - `npm start`: Run the compiled app.
+- `npm run clean`: Removes the `build` directory.
